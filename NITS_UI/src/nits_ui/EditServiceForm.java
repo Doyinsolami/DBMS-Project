@@ -4,6 +4,7 @@ package nits_ui;
 public class EditServiceForm extends javax.swing.JDialog {
 
     private int rowIndex = -1;
+    private boolean saved = false;
 
     public EditServiceForm(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
@@ -38,6 +39,10 @@ public class EditServiceForm extends javax.swing.JDialog {
         txtFee.getText()
     };
 }
+
+    public boolean isSaved() {
+        return saved;
+    }
 
 
 
@@ -109,7 +114,7 @@ public class EditServiceForm extends javax.swing.JDialog {
     }//GEN-LAST:event_closeDialog
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-        // TODO add your handling code here:
+        saved = true;
         this.dispose();
     }//GEN-LAST:event_jButton3ActionPerformed
 

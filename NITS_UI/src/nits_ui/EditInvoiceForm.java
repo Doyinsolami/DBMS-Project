@@ -1,19 +1,27 @@
 package nits_ui;
 
+import java.sql.SQLException;
+import java.util.List;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JOptionPane;
+import nits_ui.data.BackendBridge;
+import nits_ui.data.RecordOption;
 
 public class EditInvoiceForm extends javax.swing.JDialog {
 
     private int rowIndex = -1;
+    private boolean saved = false;
 
     public EditInvoiceForm(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
+        populateEngagements(-1);
     }
 
     public EditInvoiceForm(java.awt.Frame parent, boolean modal,
         int row,
         String invoice_id,
-        String engagement_id,
+        int engagement_id,
         String invoice_date,
         String due_date,
         String status,
@@ -22,24 +30,28 @@ public class EditInvoiceForm extends javax.swing.JDialog {
         super(parent, modal);
         initComponents();
         rowIndex = row;
-
         txtInvoiceID.setText(invoice_id);
-        txtEngagementID.setSelectedItem(engagement_id);
         txtInvoiceDate.setText(invoice_date);
         txtDueDate.setText(due_date);
         txtStatus.setSelectedItem(status);
         txtFinalFee.setText(final_fee);
+        populateEngagements(engagement_id);
     }
 
     public String[] getUpdatedData() {
+        RecordOption engagement = (RecordOption) txtEngagementID.getSelectedItem();
         return new String[] {
             txtInvoiceID.getText(),
-            txtEngagementID.getSelectedItem().toString(),
+            optionIdToString(engagement),
             txtInvoiceDate.getText(),
             txtDueDate.getText(),
             txtStatus.getSelectedItem().toString(),
             txtFinalFee.getText()
         };
+    }
+
+    public boolean isSaved() {
+        return saved;
     }
 
 
@@ -125,7 +137,7 @@ public class EditInvoiceForm extends javax.swing.JDialog {
     }//GEN-LAST:event_closeDialog
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-        // TODO add your handling code here:
+        saved = true;
         this.dispose();
     }//GEN-LAST:event_jButton3ActionPerformed
 
@@ -133,6 +145,48 @@ public class EditInvoiceForm extends javax.swing.JDialog {
         // TODO add your handling code here:
         this.dispose();
     }//GEN-LAST:event_jButton4ActionPerformed
+
+    private void populateEngagements(int engagementIdToSelect) {
+        try {
+            List<RecordOption> options = BackendBridge.fetchEngagementOptions();
+            DefaultComboBoxModel<RecordOption> model = new DefaultComboBoxModel<>();
+            for (RecordOption option : options) {
+                model.addElement(option);
+            }
+            txtEngagementID.setModel(model);
+
+            if (model.getSize() == 0) {
+                JOptionPane.showMessageDialog(this,
+                        "Create at least one engagement before editing invoices.",
+                        "Missing Engagements",
+                        JOptionPane.WARNING_MESSAGE);
+                saved = false;
+                dispose();
+                return;
+            }
+
+            if (engagementIdToSelect >= 0) {
+                for (int i = 0; i < model.getSize(); i++) {
+                    RecordOption option = model.getElementAt(i);
+                    if (option != null && option.getId() == engagementIdToSelect) {
+                        txtEngagementID.setSelectedIndex(i);
+                        break;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Unable to load engagements.\n" + e.getMessage(),
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+            saved = false;
+            dispose();
+        }
+    }
+
+    private String optionIdToString(RecordOption option) {
+        return option == null ? "" : Integer.toString(option.getId());
+    }
 
     /**
      * @param args the command line arguments
@@ -162,7 +216,7 @@ public class EditInvoiceForm extends javax.swing.JDialog {
     private javax.swing.JButton jButton3;
     private javax.swing.JButton jButton4;
     private javax.swing.JTextField txtDueDate;
-    private javax.swing.JComboBox<String> txtEngagementID;
+    private javax.swing.JComboBox<RecordOption> txtEngagementID;
     private javax.swing.JTextField txtFinalFee;
     private javax.swing.JTextField txtInvoiceDate;
     private javax.swing.JTextField txtInvoiceID;

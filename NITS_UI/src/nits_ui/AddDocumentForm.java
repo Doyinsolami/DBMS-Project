@@ -3,12 +3,18 @@ package nits_ui;
 
 public class AddDocumentForm extends javax.swing.JDialog {
 
+    private boolean saved = false;
+
     /**
      * Creates new form AddClientForm
      */
     public AddDocumentForm(java.awt.Frame parent, boolean modal) {
     super(parent, modal);
     initComponents();
+}
+
+public boolean isSaved() {
+    return saved;
 }
 
 public String[] getDocumentData() {
@@ -91,10 +97,10 @@ public String[] getDocumentData() {
         jButton2.addActionListener(this::jButton2ActionPerformed);
         getContentPane().add(jButton2, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 500, 150, 30));
 
-        documentCombo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        documentCombo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Document Type", "Tax Return", "Identification", "Receipt", "Other" }));
         getContentPane().add(documentCombo, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 200, 320, 30));
 
-        statusCombo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        statusCombo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Status", "Received", "Pending", "Archived" }));
         getContentPane().add(statusCombo, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 450, 320, 30));
 
         pack();
@@ -109,7 +115,7 @@ public String[] getDocumentData() {
     }//GEN-LAST:event_closeDialog
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
+        saved = true;
         this.dispose();
 
     }//GEN-LAST:event_jButton1ActionPerformed

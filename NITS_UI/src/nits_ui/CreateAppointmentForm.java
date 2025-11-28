@@ -3,6 +3,8 @@ package nits_ui;
 
 public class CreateAppointmentForm extends javax.swing.JDialog {
 
+    private boolean saved = false;
+
     /**
      * Creates new form AddClientForm
      */
@@ -11,9 +13,13 @@ public class CreateAppointmentForm extends javax.swing.JDialog {
     initComponents();
 }
 
-public String[] getAppointmentData() {
-    return new String[] {
-        txtAppointmentID.getText(),
+    public boolean isSaved() {
+        return saved;
+    }
+
+    public String[] getAppointmentData() {
+        return new String[] {
+            txtAppointmentID.getText(),
         txtClientName.getText(),
         txtEmployeeName.getText(),
         txtDate.getText(),
@@ -90,7 +96,7 @@ public String[] getAppointmentData() {
         jButton2.addActionListener(this::jButton2ActionPerformed);
         getContentPane().add(jButton2, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 500, 150, 30));
 
-        statusCombo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        statusCombo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Status", "Scheduled", "Completed", "Cancelled", "No-Show" }));
         getContentPane().add(statusCombo, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 450, 320, 30));
 
         pack();
@@ -105,7 +111,7 @@ public String[] getAppointmentData() {
     }//GEN-LAST:event_closeDialog
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
+        saved = true;
         this.dispose();
 
     }//GEN-LAST:event_jButton1ActionPerformed

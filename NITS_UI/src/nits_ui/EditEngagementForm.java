@@ -1,54 +1,66 @@
 package nits_ui;
 
+import java.sql.SQLException;
+import java.util.List;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JOptionPane;
+import nits_ui.data.BackendBridge;
+import nits_ui.data.RecordOption;
+
 
 public class EditEngagementForm extends javax.swing.JDialog {
 
     private int rowIndex = -1;
+    private boolean saved = false;
 
     public EditEngagementForm(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
+        populateDropdowns(-1, -1, -1);
     }
     public EditEngagementForm(
-    java.awt.Frame parent, boolean modal,
-    int row,
-    String id,
-    String client,
-    String service,
-    String preparer,
-    String startDate,
-    String expected,
-    String actual,
-    String status
-) {
-    super(parent, modal);
-    initComponents();
-
-    rowIndex = row;
-
-    txtEngagementID.setText(id);
-    txtClient.setSelectedItem(client);
-    txtService1.setSelectedItem(service);
-    txtPreparer.setSelectedItem(preparer);
-    txtStartDate.setText(startDate);
-    txtExpectedCompletion.setText(expected);
-    txtActualCompletion.setText(actual);
-    txtStatus.setSelectedItem(status);
-}
+        java.awt.Frame parent, boolean modal,
+        int row,
+        int engagementId,
+        int clientId,
+        int serviceId,
+        int preparerId,
+        String startDate,
+        String expected,
+        String actual,
+        String status
+    ) {
+        super(parent, modal);
+        initComponents();
+        rowIndex = row;
+        txtEngagementID.setText(Integer.toString(engagementId));
+        txtStartDate.setText(startDate);
+        txtExpectedCompletion.setText(expected);
+        txtActualCompletion.setText(actual);
+        txtStatus.setSelectedItem(status);
+        populateDropdowns(clientId, serviceId, preparerId);
+    }
 
 
   public String[] getUpdatedData() {
+    RecordOption client = (RecordOption) txtClient.getSelectedItem();
+    RecordOption service = (RecordOption) txtService1.getSelectedItem();
+    RecordOption preparer = (RecordOption) txtPreparer.getSelectedItem();
     return new String[] {
         txtEngagementID.getText(),
-        (String) txtClient.getSelectedItem(),
-        (String) txtService1.getSelectedItem(),
-        (String) txtPreparer.getSelectedItem(),
+        optionIdToString(client),
+        optionIdToString(service),
+        optionIdToString(preparer),
         txtStartDate.getText(),
         txtExpectedCompletion.getText(),
         txtActualCompletion.getText(),
         (String) txtStatus.getSelectedItem()
     };
 }
+
+    public boolean isSaved() {
+        return saved;
+    }
 
 
 
@@ -115,7 +127,6 @@ public class EditEngagementForm extends javax.swing.JDialog {
         Preparer.setText("Preparer");
         getContentPane().add(Preparer, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 230, 180, -1));
 
-        txtPreparer.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         txtPreparer.addActionListener(this::txtPreparerActionPerformed);
         getContentPane().add(txtPreparer, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 260, 320, 30));
 
@@ -149,7 +160,7 @@ public class EditEngagementForm extends javax.swing.JDialog {
     }//GEN-LAST:event_closeDialog
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-        // TODO add your handling code here:
+        saved = true;
         this.dispose();
     }//GEN-LAST:event_jButton3ActionPerformed
 
@@ -161,6 +172,67 @@ public class EditEngagementForm extends javax.swing.JDialog {
     private void txtPreparerActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtPreparerActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_txtPreparerActionPerformed
+
+    private void populateDropdowns(int clientId, int serviceId, int preparerId) {
+        try {
+            DefaultComboBoxModel<RecordOption> clientModel =
+                    buildModel(BackendBridge.fetchClientOptions());
+            DefaultComboBoxModel<RecordOption> serviceModel =
+                    buildModel(BackendBridge.fetchServiceOptions());
+            DefaultComboBoxModel<RecordOption> employeeModel =
+                    buildModel(BackendBridge.fetchEmployeeOptions());
+
+            txtClient.setModel(clientModel);
+            txtService1.setModel(serviceModel);
+            txtPreparer.setModel(employeeModel);
+
+            if (clientModel.getSize() == 0 || serviceModel.getSize() == 0 || employeeModel.getSize() == 0) {
+                JOptionPane.showMessageDialog(this,
+                        "Add at least one client, service, and employee before editing engagements.",
+                        "Missing Data",
+                        JOptionPane.WARNING_MESSAGE);
+                saved = false;
+                dispose();
+                return;
+            }
+
+            selectComboById(txtClient, clientId);
+            selectComboById(txtService1, serviceId);
+            selectComboById(txtPreparer, preparerId);
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this,
+                    "Unable to load engagement options.\n" + e.getMessage(),
+                    "Database Error",
+                    JOptionPane.ERROR_MESSAGE);
+            saved = false;
+            dispose();
+        }
+    }
+
+    private DefaultComboBoxModel<RecordOption> buildModel(List<RecordOption> options) {
+        DefaultComboBoxModel<RecordOption> model = new DefaultComboBoxModel<>();
+        for (RecordOption option : options) {
+            model.addElement(option);
+        }
+        return model;
+    }
+
+    private void selectComboById(javax.swing.JComboBox<RecordOption> combo, int id) {
+        if (id < 0) {
+            return;
+        }
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            RecordOption option = combo.getItemAt(i);
+            if (option != null && option.getId() == id) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
+    private String optionIdToString(RecordOption option) {
+        return option == null ? "" : Integer.toString(option.getId());
+    }
 
     /**
      * @param args the command line arguments
@@ -192,11 +264,11 @@ public class EditEngagementForm extends javax.swing.JDialog {
     private javax.swing.JButton jButton3;
     private javax.swing.JButton jButton4;
     private javax.swing.JTextField txtActualCompletion;
-    private javax.swing.JComboBox<String> txtClient;
+    private javax.swing.JComboBox<RecordOption> txtClient;
     private javax.swing.JTextField txtEngagementID;
     private javax.swing.JTextField txtExpectedCompletion;
-    private javax.swing.JComboBox<String> txtPreparer;
-    private javax.swing.JComboBox<String> txtService1;
+    private javax.swing.JComboBox<RecordOption> txtPreparer;
+    private javax.swing.JComboBox<RecordOption> txtService1;
     private javax.swing.JTextField txtStartDate;
     private javax.swing.JComboBox<String> txtStatus;
     // End of variables declaration//GEN-END:variables

@@ -3,6 +3,8 @@ package nits_ui;
 
 public class AddClientForm extends javax.swing.JDialog {
 
+    private boolean saved = false;
+
     /**
      * Creates new form AddClientForm
      */
@@ -11,10 +13,14 @@ public class AddClientForm extends javax.swing.JDialog {
     initComponents();
 }
 
-public String[] getClientData() {
-    return new String[] {
-        txtClientID.getText(),
-        txtFirstName.getText(),
+    public boolean isSaved() {
+        return saved;
+    }
+
+    public String[] getClientData() {
+        return new String[] {
+            txtClientID.getText(),
+            txtFirstName.getText(),
         txtLastName.getText(),
         txtPhone.getText(),
         txtEmail.getText(),
@@ -122,7 +128,7 @@ public String[] getClientData() {
     }//GEN-LAST:event_closeDialog
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
+        saved = true;
         this.dispose();
 
     }//GEN-LAST:event_jButton1ActionPerformed

@@ -1,8 +1,15 @@
 package nits_ui;
 import javax.swing.JButton;
 import java.awt.Color;
+import java.math.BigDecimal;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.logging.Level;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import nits_ui.data.BackendBridge;
 
 
 
@@ -12,6 +19,7 @@ import javax.swing.table.DefaultTableModel;
 public class Home extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(Home.class.getName());
+    private static final LocalDate SAMPLE_REFERENCE_DATE = LocalDate.of(2025, 1, 1);
 
     JButton[] menuButtons;
     public Home() {
@@ -952,18 +960,28 @@ private void highlightButton(JButton selected) {
     }//GEN-LAST:event_reportActionPerformed
 
     private void create_invoiceActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_create_invoiceActionPerformed
-        // TODO add your handling code here:
         CreateInvoiceForm form = new CreateInvoiceForm(this, true);
-form.setLocationRelativeTo(this);
-form.setVisible(true);
+        form.setLocationRelativeTo(this);
+        form.setVisible(true);
 
-String[] data = form.getInvoiceData();
+        if (!form.isSaved()) {
+            return;
+        }
 
-javax.swing.table.DefaultTableModel model =
-    (javax.swing.table.DefaultTableModel) invoicesTable.getModel();
+        String[] data = form.getInvoiceData();
 
-model.addRow(data);
+        try {
+            Integer invoiceId = parseOptionalInteger(data[0]);
+            int engagementId = parseRequiredInteger(data[1], "Engagement");
+            LocalDate invoiceDate = parseIsoDate(data[2], "Invoice Date");
+            BigDecimal finalFee = parseCurrency(data[5], "Final Fee");
 
+            BackendBridge.insertInvoice(invoiceId, engagementId, invoiceDate, finalFee);
+            JOptionPane.showMessageDialog(this, "Invoice saved.");
+            refreshInvoicesTable();
+        } catch (SQLException | IllegalArgumentException e) {
+            reportError("Unable to save invoice", e);
+        }
     }//GEN-LAST:event_create_invoiceActionPerformed
 
     private void delete_invoicemouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_delete_invoicemouseEntered
@@ -985,9 +1003,17 @@ int confirm = javax.swing.JOptionPane.showConfirmDialog(
 );
 
 if (confirm == javax.swing.JOptionPane.YES_OPTION) {
-    javax.swing.table.DefaultTableModel model =
-        (javax.swing.table.DefaultTableModel) invoicesTable.getModel();
-    model.removeRow(row);
+    Object idValue = invoicesTable.getValueAt(row, 0);
+    try {
+        int invoiceId = Integer.parseInt(idValue.toString());
+        BackendBridge.deleteInvoice(invoiceId);
+        JOptionPane.showMessageDialog(this, "Invoice deleted.");
+        refreshInvoicesTable();
+    } catch (NumberFormatException e) {
+        reportError("Invalid invoice identifier", e);
+    } catch (SQLException e) {
+        reportError("Unable to delete invoice", e);
+    }
 }
 
     }//GEN-LAST:event_delete_invoiceActionPerformed
@@ -1013,37 +1039,61 @@ String dueDate = safeValue(invoicesTable.getValueAt(row, 3));
 String status  = safeValue(invoicesTable.getValueAt(row, 4));
 String finalFee= safeValue(invoicesTable.getValueAt(row, 5));
 
-EditInvoiceForm form = new EditInvoiceForm(
-    this, true, row, id, engID, invDate, dueDate, status, finalFee
-);
+try {
+    int engagementId = parseRequiredInteger(engID, "Engagement ID");
 
-form.setLocationRelativeTo(this);
-form.setVisible(true);
+    EditInvoiceForm form = new EditInvoiceForm(
+        this, true, row, id, engagementId, invDate, dueDate, status, finalFee
+    );
 
-String[] updated = form.getUpdatedData();
+    form.setLocationRelativeTo(this);
+    form.setVisible(true);
 
-javax.swing.table.DefaultTableModel model =
-    (javax.swing.table.DefaultTableModel) invoicesTable.getModel();
+    if (!form.isSaved()) {
+        return;
+    }
 
-for (int i = 0; i < updated.length; i++) {
-    model.setValueAt(updated[i], row, i);
+    String[] updated = form.getUpdatedData();
+
+    int invoiceId = parseRequiredInteger(updated[0], "Invoice ID");
+    int updatedEngagement = parseRequiredInteger(updated[1], "Engagement");
+    LocalDate invoiceDate = parseIsoDate(updated[2], "Invoice Date");
+    BigDecimal updatedFee = parseCurrency(updated[5], "Final Fee");
+
+    BackendBridge.updateInvoice(invoiceId, updatedEngagement, invoiceDate, updatedFee);
+    JOptionPane.showMessageDialog(this, "Invoice updated.");
+    refreshInvoicesTable();
+} catch (SQLException | IllegalArgumentException e) {
+    reportError("Unable to update invoice", e);
 }
 
     }//GEN-LAST:event_edit_invoiceActionPerformed
 
     private void add_client1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_add_client1ActionPerformed
-        // TODO add your handling code here:
-        EditClientForm form = new EditClientForm(this, true);
-    form.setLocationRelativeTo(this); 
-    form.setVisible(true);
+        AddClientForm form = new AddClientForm(this, true);
+        form.setLocationRelativeTo(this);
+        form.setVisible(true);
 
-    String[] data = form.getUpdatedData();
+        if (!form.isSaved()) {
+            return;
+        }
 
-    // jTable1 = clients table
-    javax.swing.table.DefaultTableModel model =
-        (javax.swing.table.DefaultTableModel) jTable1.getModel();
-
-    model.addRow(data);
+        String[] data = form.getClientData();
+        try {
+            Integer clientId = parseOptionalInteger(data[0]);
+            BackendBridge.insertClient(
+                    clientId,
+                    data[1],
+                    data[2],
+                    data[5],
+                    "", "", "",
+                    data[3],
+                    data[4]);
+            JOptionPane.showMessageDialog(this, "Client saved successfully.");
+            refreshClientsTable();
+        } catch (SQLException | IllegalArgumentException e) {
+            reportError("Unable to save client", e);
+        }
     }//GEN-LAST:event_add_client1ActionPerformed
 
     private void client3mouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_client3mouseEntered
@@ -1064,9 +1114,17 @@ for (int i = 0; i < updated.length; i++) {
             this, "Delete this client?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
 
     if (confirm == javax.swing.JOptionPane.YES_OPTION) {
-        javax.swing.table.DefaultTableModel model =
-                (javax.swing.table.DefaultTableModel) jTable1.getModel();
-        model.removeRow(row);
+        Object idValue = jTable1.getValueAt(row, 0);
+        try {
+            int clientId = Integer.parseInt(idValue.toString());
+            BackendBridge.deleteClient(clientId);
+            JOptionPane.showMessageDialog(this, "Client deleted.");
+            refreshClientsTable();
+        } catch (NumberFormatException e) {
+            reportError("Invalid client identifier", e);
+        } catch (SQLException e) {
+            reportError("Unable to delete client", e);
+        }
     }
     }//GEN-LAST:event_client3ActionPerformed
 
@@ -1115,17 +1173,29 @@ for (int i = 0; i < updated.length; i++) {
     }//GEN-LAST:event_employeesActionPerformed
 
     private void create_appointmentActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_create_appointmentActionPerformed
-        // TODO add your handling code here:
         CreateAppointmentForm form = new CreateAppointmentForm(this, true);
-    form.setLocationRelativeTo(this);
-    form.setVisible(true);
+        form.setLocationRelativeTo(this);
+        form.setVisible(true);
 
-    String[] data = form.getAppointmentData();
+        if (!form.isSaved()) {
+            return;
+        }
 
-    javax.swing.table.DefaultTableModel model =
-        (javax.swing.table.DefaultTableModel) appointmentsTable.getModel();
+        String[] data = form.getAppointmentData();
 
-    model.addRow(data);
+        try {
+            Integer appointmentId = parseOptionalInteger(data[0]);
+            int clientId = parseRequiredInteger(data[1], "Client ID");
+            int employeeId = parseRequiredInteger(data[2], "Employee ID");
+            LocalDate date = parseIsoDate(data[3], "Appointment Date");
+            LocalTime time = parseIsoTime(data[4], "Appointment Time");
+
+            BackendBridge.insertAppointment(appointmentId, clientId, employeeId, date, time);
+            JOptionPane.showMessageDialog(this, "Appointment saved.");
+            refreshAppointmentsTable();
+        } catch (SQLException | IllegalArgumentException e) {
+            reportError("Unable to save appointment", e);
+        }
     }//GEN-LAST:event_create_appointmentActionPerformed
 
     private void delete_appointmentmouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_delete_appointmentmouseEntered
@@ -1146,9 +1216,17 @@ for (int i = 0; i < updated.length; i++) {
             this, "Delete this appointment?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
 
     if (confirm == javax.swing.JOptionPane.YES_OPTION) {
-        javax.swing.table.DefaultTableModel model =
-                (javax.swing.table.DefaultTableModel) appointmentsTable.getModel();
-        model.removeRow(row);
+        Object idValue = appointmentsTable.getValueAt(row, 0);
+        try {
+            int appointmentId = Integer.parseInt(idValue.toString());
+            BackendBridge.deleteAppointment(appointmentId);
+            JOptionPane.showMessageDialog(this, "Appointment deleted.");
+            refreshAppointmentsTable();
+        } catch (NumberFormatException e) {
+            reportError("Invalid appointment identifier", e);
+        } catch (SQLException e) {
+            reportError("Unable to delete appointment", e);
+        }
     }
     }//GEN-LAST:event_delete_appointmentActionPerformed
 
@@ -1198,17 +1276,26 @@ for (int i = 0; i < updated.length; i++) {
 
 
     private void add_serviceActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_add_serviceActionPerformed
-        // TODO add your handling code here:
         AddServiceForm form = new AddServiceForm(this, true);
-    form.setLocationRelativeTo(this);
-    form.setVisible(true);
+        form.setLocationRelativeTo(this);
+        form.setVisible(true);
 
-    String[] data = form.getServiceData();
+        if (!form.isSaved()) {
+            return;
+        }
 
-    javax.swing.table.DefaultTableModel model =
-        (javax.swing.table.DefaultTableModel) serviceTable.getModel();
+        String[] data = form.getServiceData();
 
-    model.addRow(data);
+        try {
+            Integer serviceId = parseOptionalInteger(data[0]);
+            String serviceName = requireText(data[1], "Service Name");
+            BigDecimal fee = parseCurrency(data[3], "Fee");
+            BackendBridge.insertService(serviceId, serviceName, data[2], fee);
+            JOptionPane.showMessageDialog(this, "Service saved successfully.");
+            refreshServicesTable();
+        } catch (SQLException | IllegalArgumentException e) {
+            reportError("Unable to save service", e);
+        }
     }//GEN-LAST:event_add_serviceActionPerformed
 
     private void delete_servicemouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_delete_servicemouseEntered
@@ -1216,23 +1303,30 @@ for (int i = 0; i < updated.length; i++) {
     }//GEN-LAST:event_delete_servicemouseEntered
 
     private void delete_serviceActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_delete_serviceActionPerformed
-        // TODO add your handling code here:
-         int row = serviceTable.getSelectedRow();
+        int row = serviceTable.getSelectedRow();
 
-    if (row == -1) {
-        javax.swing.JOptionPane.showMessageDialog(this,
-            "Select a service to delete");
-        return;
-    }
+        if (row == -1) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "Select a service to delete");
+            return;
+        }
 
-    int confirm = javax.swing.JOptionPane.showConfirmDialog(
-            this, "Delete this service?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
+        int confirm = javax.swing.JOptionPane.showConfirmDialog(
+                this, "Delete this service?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
 
-    if (confirm == javax.swing.JOptionPane.YES_OPTION) {
-        javax.swing.table.DefaultTableModel model =
-                (javax.swing.table.DefaultTableModel) serviceTable.getModel();
-        model.removeRow(row);
-    }
+        if (confirm == javax.swing.JOptionPane.YES_OPTION) {
+            Object idValue = serviceTable.getValueAt(row, 0);
+            try {
+                int serviceId = Integer.parseInt(idValue.toString());
+                BackendBridge.deleteService(serviceId);
+                JOptionPane.showMessageDialog(this, "Service deleted.");
+                refreshServicesTable();
+            } catch (NumberFormatException e) {
+                reportError("Invalid service identifier", e);
+            } catch (SQLException e) {
+                reportError("Unable to delete service", e);
+            }
+        }
     }//GEN-LAST:event_delete_serviceActionPerformed
 
     private void edit_servicemouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_edit_servicemouseEntered
@@ -1240,36 +1334,42 @@ for (int i = 0; i < updated.length; i++) {
     }//GEN-LAST:event_edit_servicemouseEntered
 
     private void edit_serviceActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_edit_serviceActionPerformed
-        // TODO add your handling code here:
-        
-    int row = serviceTable.getSelectedRow();
+        int row = serviceTable.getSelectedRow();
 
-    if (row == -1) {
-        javax.swing.JOptionPane.showMessageDialog(this,
-            "Select a service to edit");
-        return;
-    }
+        if (row == -1) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "Select a service to edit");
+            return;
+        }
 
-    String id = safeValue(serviceTable.getValueAt(row, 0));
-    String name = safeValue(serviceTable.getValueAt(row, 1));
-    String desc = safeValue(serviceTable.getValueAt(row, 2));
-    String fee = safeValue(serviceTable.getValueAt(row, 3));
+        String id = safeValue(serviceTable.getValueAt(row, 0));
+        String name = safeValue(serviceTable.getValueAt(row, 1));
+        String desc = safeValue(serviceTable.getValueAt(row, 2));
+        String fee = safeValue(serviceTable.getValueAt(row, 3));
 
-    EditServiceForm form = new EditServiceForm(
-        this, true, row, id, name, desc, fee
-    );
+        EditServiceForm form = new EditServiceForm(
+            this, true, row, id, name, desc, fee
+        );
 
-    form.setLocationRelativeTo(this);
-    form.setVisible(true);
+        form.setLocationRelativeTo(this);
+        form.setVisible(true);
 
-    String[] updated = form.getUpdatedData();
+        if (!form.isSaved()) {
+            return;
+        }
 
-    javax.swing.table.DefaultTableModel model =
-        (javax.swing.table.DefaultTableModel) serviceTable.getModel();
+        String[] updated = form.getUpdatedData();
 
-    for (int i = 0; i < updated.length; i++) {
-        model.setValueAt(updated[i], row, i);
-    }
+        try {
+            int serviceId = parseRequiredInteger(updated[0], "Service ID");
+            String serviceName = requireText(updated[1], "Service Name");
+            BigDecimal feeValue = parseCurrency(updated[3], "Fee");
+            BackendBridge.updateService(serviceId, serviceName, updated[2], feeValue);
+            JOptionPane.showMessageDialog(this, "Service updated.");
+            refreshServicesTable();
+        } catch (SQLException | IllegalArgumentException e) {
+            reportError("Unable to update service", e);
+        }
     }//GEN-LAST:event_edit_serviceActionPerformed
 
     private void servicesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_servicesActionPerformed
@@ -1278,17 +1378,31 @@ for (int i = 0; i < updated.length; i++) {
     }//GEN-LAST:event_servicesActionPerformed
 
     private void create_engagementActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_create_engagementActionPerformed
-        // TODO add your handling code here:
         CreateEngagementForm form = new CreateEngagementForm(this, true);
         form.setLocationRelativeTo(this);
         form.setVisible(true);
 
+        if (!form.isSaved()) {
+            return;
+        }
+
         String[] data = form.getEngagementData();
 
-        javax.swing.table.DefaultTableModel model =
-            (javax.swing.table.DefaultTableModel) engagementsTable.getModel();
+        try {
+            Integer engagementId = parseOptionalInteger(data[0]);
+            int clientId = parseRequiredInteger(data[1], "Client");
+            int serviceId = parseRequiredInteger(data[2], "Service");
+            int preparerId = parseRequiredInteger(data[3], "Preparer");
+            LocalDate startDate = parseIsoDate(data[4], "Start Date");
+            LocalDate expected = parseIsoDate(data[5], "Expected Completion");
+            String status = data[7];
 
-        model.addRow(data);
+            BackendBridge.insertEngagement(engagementId, clientId, preparerId, serviceId, startDate, expected, status);
+            JOptionPane.showMessageDialog(this, "Engagement saved.");
+            refreshEngagementsTable();
+        } catch (SQLException | IllegalArgumentException e) {
+            reportError("Unable to save engagement", e);
+        }
     }//GEN-LAST:event_create_engagementActionPerformed
 
     private void delete_engagementmouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_delete_engagementmouseEntered
@@ -1296,23 +1410,30 @@ for (int i = 0; i < updated.length; i++) {
     }//GEN-LAST:event_delete_engagementmouseEntered
 
     private void delete_engagementActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_delete_engagementActionPerformed
-        // TODO add your handling code here:
-          int row = engagementsTable.getSelectedRow();
+        int row = engagementsTable.getSelectedRow();
 
-    if (row == -1) {
-        javax.swing.JOptionPane.showMessageDialog(this,
-            "Select an engagement to delete");
-        return;
-    }
+        if (row == -1) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "Select an engagement to delete");
+            return;
+        }
 
-    int confirm = javax.swing.JOptionPane.showConfirmDialog(
-            this, "Delete this engagement?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
+        int confirm = javax.swing.JOptionPane.showConfirmDialog(
+                this, "Delete this engagement?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
 
-    if (confirm == javax.swing.JOptionPane.YES_OPTION) {
-        javax.swing.table.DefaultTableModel model =
-                (javax.swing.table.DefaultTableModel) engagementsTable.getModel();
-        model.removeRow(row);
-    }
+        if (confirm == javax.swing.JOptionPane.YES_OPTION) {
+            Object idValue = engagementsTable.getValueAt(row, 0);
+            try {
+                int engagementId = Integer.parseInt(idValue.toString());
+                BackendBridge.deleteEngagement(engagementId);
+                JOptionPane.showMessageDialog(this, "Engagement deleted.");
+                refreshEngagementsTable();
+            } catch (NumberFormatException e) {
+                reportError("Invalid engagement identifier", e);
+            } catch (SQLException e) {
+                reportError("Unable to delete engagement", e);
+            }
+        }
     }//GEN-LAST:event_delete_engagementActionPerformed
 
     private void edit_engagementmouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_edit_engagementmouseEntered
@@ -1320,8 +1441,7 @@ for (int i = 0; i < updated.length; i++) {
     }//GEN-LAST:event_edit_engagementmouseEntered
 
     private void edit_engagementActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_edit_engagementActionPerformed
-        // TODO add your handling code here:
-         int row = engagementsTable.getSelectedRow();
+        int row = engagementsTable.getSelectedRow();
 
         if (row == -1) {
             javax.swing.JOptionPane.showMessageDialog(this,
@@ -1329,8 +1449,7 @@ for (int i = 0; i < updated.length; i++) {
             return;
         }
 
-        // Get values
-        String id      = safeValue(engagementsTable.getValueAt(row, 0));
+        String idText  = safeValue(engagementsTable.getValueAt(row, 0));
         String client  = safeValue(engagementsTable.getValueAt(row, 1));
         String service = safeValue(engagementsTable.getValueAt(row, 2));
         String prep    = safeValue(engagementsTable.getValueAt(row, 3));
@@ -1339,20 +1458,38 @@ for (int i = 0; i < updated.length; i++) {
         String actual  = safeValue(engagementsTable.getValueAt(row, 6));
         String status  = safeValue(engagementsTable.getValueAt(row, 7));
 
-        EditEngagementForm form = new EditEngagementForm(
-            this, true, row, id, client, service, prep, start, expect, actual, status
-        );
+        try {
+            int engagementId = parseRequiredInteger(idText, "Engagement ID");
+            int clientId = parseOptionIdFromLabel(client, "Client");
+            int serviceId = parseOptionIdFromLabel(service, "Service");
+            int preparerId = parseOptionIdFromLabel(prep, "Preparer");
 
-        form.setLocationRelativeTo(this);
-        form.setVisible(true);
+            EditEngagementForm form = new EditEngagementForm(
+                this, true, row, engagementId, clientId, serviceId, preparerId, start, expect, actual, status
+            );
 
-        String[] updated = form.getUpdatedData();
+            form.setLocationRelativeTo(this);
+            form.setVisible(true);
 
-        javax.swing.table.DefaultTableModel model =
-            (javax.swing.table.DefaultTableModel) engagementsTable.getModel();
+            if (!form.isSaved()) {
+                return;
+            }
 
-        for (int i = 0; i < updated.length; i++) {
-            model.setValueAt(updated[i], row, i);
+            String[] updated = form.getUpdatedData();
+
+            int updatedClientId = parseRequiredInteger(updated[1], "Client");
+            int updatedServiceId = parseRequiredInteger(updated[2], "Service");
+            int updatedPreparerId = parseRequiredInteger(updated[3], "Preparer");
+            LocalDate newStart = parseIsoDate(updated[4], "Start Date");
+            LocalDate newExpected = parseIsoDate(updated[5], "Expected Completion");
+            String newStatus = updated[7];
+
+            BackendBridge.updateEngagement(engagementId, updatedClientId, updatedPreparerId, updatedServiceId,
+                    newStart, newExpected, newStatus);
+            JOptionPane.showMessageDialog(this, "Engagement updated.");
+            refreshEngagementsTable();
+        } catch (SQLException | IllegalArgumentException e) {
+            reportError("Unable to update engagement", e);
         }
     }//GEN-LAST:event_edit_engagementActionPerformed
 
@@ -1449,17 +1586,28 @@ for (int i = 0; i < updated.length; i++) {
     }//GEN-LAST:event_edit_employeeActionPerformed
 
     private void add_paymentActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_add_paymentActionPerformed
-        // TODO add your handling code here:
         AddPaymentForm form = new AddPaymentForm(this, true);
-    form.setLocationRelativeTo(this);
-    form.setVisible(true);
+        form.setLocationRelativeTo(this);
+        form.setVisible(true);
 
-    String[] data = form.getPaymentData();
+        if (!form.isSaved()) {
+            return;
+        }
 
-    javax.swing.table.DefaultTableModel model =
-        (javax.swing.table.DefaultTableModel) paymentsTable.getModel();
+        String[] data = form.getPaymentData();
 
-    model.addRow(data);
+        try {
+            Integer paymentId = parseOptionalInteger(data[0]);
+            int invoiceId = parseRequiredInteger(data[1], "Invoice ID");
+            BigDecimal amount = parseCurrency(data[3], "Amount");
+            LocalDate paymentDate = parseIsoDate(data[5], "Payment Date");
+
+            BackendBridge.insertPayment(paymentId, invoiceId, amount, paymentDate);
+            JOptionPane.showMessageDialog(this, "Payment recorded.");
+            refreshPaymentsTable();
+        } catch (SQLException | IllegalArgumentException e) {
+            reportError("Unable to save payment", e);
+        }
     }//GEN-LAST:event_add_paymentActionPerformed
 
     private void delete_paymentmouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_delete_paymentmouseEntered
@@ -1480,9 +1628,17 @@ for (int i = 0; i < updated.length; i++) {
             this, "Delete this payment?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
 
     if (confirm == javax.swing.JOptionPane.YES_OPTION) {
-        javax.swing.table.DefaultTableModel model =
-                (javax.swing.table.DefaultTableModel) paymentsTable.getModel();
-        model.removeRow(row);
+        Object idValue = paymentsTable.getValueAt(row, 0);
+        try {
+            int paymentId = Integer.parseInt(idValue.toString());
+            BackendBridge.deletePayment(paymentId);
+            JOptionPane.showMessageDialog(this, "Payment deleted.");
+            refreshPaymentsTable();
+        } catch (NumberFormatException e) {
+            reportError("Invalid payment identifier", e);
+        } catch (SQLException e) {
+            reportError("Unable to delete payment", e);
+        }
     }
     }//GEN-LAST:event_delete_paymentActionPerformed
 
@@ -1517,13 +1673,23 @@ for (int i = 0; i < updated.length; i++) {
     form.setVisible(true);
 
     // Replace row
+    if (!form.isSaved()) {
+        return;
+    }
+
     String[] updated = form.getUpdatedData();
 
-    javax.swing.table.DefaultTableModel model =
-        (javax.swing.table.DefaultTableModel) paymentsTable.getModel();
+    try {
+        int paymentId = parseRequiredInteger(updated[0], "Payment ID");
+        int invoiceId = parseRequiredInteger(updated[1], "Invoice ID");
+        BigDecimal updatedAmount = parseCurrency(updated[3], "Amount");
+        LocalDate paymentDate = parseIsoDate(updated[5], "Payment Date");
 
-    for (int i = 0; i < updated.length; i++) {
-        model.setValueAt(updated[i], row, i);
+        BackendBridge.updatePayment(paymentId, invoiceId, updatedAmount, paymentDate);
+        JOptionPane.showMessageDialog(this, "Payment updated.");
+        refreshPaymentsTable();
+    } catch (SQLException | IllegalArgumentException e) {
+        reportError("Unable to update payment", e);
     }
     }//GEN-LAST:event_edit_paymentActionPerformed
 
@@ -1533,17 +1699,27 @@ for (int i = 0; i < updated.length; i++) {
     }//GEN-LAST:event_paymentsActionPerformed
 
     private void add_documentActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_add_documentActionPerformed
-        // TODO add your handling code here:
         AddDocumentForm form = new AddDocumentForm(this, true);
-    form.setLocationRelativeTo(this);
-    form.setVisible(true);
+        form.setLocationRelativeTo(this);
+        form.setVisible(true);
 
-    String[] data = form.getDocumentData();
+        if (!form.isSaved()) {
+            return;
+        }
 
-    javax.swing.table.DefaultTableModel model =
-        (javax.swing.table.DefaultTableModel) documentsTable.getModel();
+        String[] data = form.getDocumentData();
 
-    model.addRow(data);
+        try {
+            Integer documentId = parseOptionalInteger(data[0]);
+            int clientId = parseRequiredInteger(data[1], "Client ID");
+            String documentType = requireText(data[2], "Document Type");
+
+            BackendBridge.insertDocument(documentId, clientId, documentType);
+            JOptionPane.showMessageDialog(this, "Document saved.");
+            refreshDocumentsTable();
+        } catch (SQLException | IllegalArgumentException e) {
+            reportError("Unable to save document", e);
+        }
     }//GEN-LAST:event_add_documentActionPerformed
 
     private void delete_documentmouseEntered(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_delete_documentmouseEntered
@@ -1563,9 +1739,17 @@ for (int i = 0; i < updated.length; i++) {
                 this, "Delete this document?", "Confirm", JOptionPane.YES_NO_OPTION);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            DefaultTableModel model =
-                    (DefaultTableModel) documentsTable.getModel();
-            model.removeRow(row);
+            Object idValue = documentsTable.getValueAt(row, 0);
+            try {
+                int documentId = Integer.parseInt(idValue.toString());
+                BackendBridge.deleteDocument(documentId);
+                JOptionPane.showMessageDialog(this, "Document deleted.");
+                refreshDocumentsTable();
+            } catch (NumberFormatException e) {
+                reportError("Invalid document identifier", e);
+            } catch (SQLException e) {
+                reportError("Unable to delete document", e);
+            }
         }
 
     }//GEN-LAST:event_delete_documentActionPerformed
@@ -1590,20 +1774,31 @@ for (int i = 0; i < updated.length; i++) {
     String notes   = safeValue(documentsTable.getValueAt(row, 4));
     String status  = safeValue(documentsTable.getValueAt(row, 5));
 
-    EditDocumentForm form = new EditDocumentForm(
-        this, true, row, id, client, type, date, notes, status
-    );
+    try {
+        int documentId = parseRequiredInteger(id, "Document ID");
+        int clientId = parseOptionIdFromLabel(client, "Client");
 
-    form.setLocationRelativeTo(this);
-    form.setVisible(true);
+        EditDocumentForm form = new EditDocumentForm(
+            this, true, row, Integer.toString(documentId), Integer.toString(clientId), type, date, notes, status
+        );
 
-    String[] updated = form.getUpdatedData();
+        form.setLocationRelativeTo(this);
+        form.setVisible(true);
 
-    DefaultTableModel model =
-        (DefaultTableModel) documentsTable.getModel();
+        if (!form.isSaved()) {
+            return;
+        }
 
-    for (int i = 0; i < updated.length; i++) {
-        model.setValueAt(updated[i], row, i);
+        String[] updated = form.getUpdatedData();
+
+        int updatedClientId = parseRequiredInteger(updated[1], "Client ID");
+        String updatedType = requireText(updated[2], "Document Type");
+
+        BackendBridge.updateDocument(documentId, updatedClientId, updatedType);
+        JOptionPane.showMessageDialog(this, "Document updated.");
+        refreshDocumentsTable();
+    } catch (SQLException | IllegalArgumentException e) {
+        reportError("Unable to update document", e);
     }
     }//GEN-LAST:event_edit_documentActionPerformed
 
@@ -1613,12 +1808,189 @@ for (int i = 0; i < updated.length; i++) {
     }//GEN-LAST:event_documentsActionPerformed
 
     
+    private void refreshClientsTable() {
+        try {
+            List<Object[]> rows = BackendBridge.loadClients();
+            setTableRows((DefaultTableModel) jTable1.getModel(), rows);
+        } catch (SQLException e) {
+            reportError("Unable to load clients", e);
+        }
+    }
+
+    private void refreshAppointmentsTable() {
+        try {
+            List<Object[]> rows = BackendBridge.loadUpcomingAppointments(LocalDate.now(), 30);
+            if (rows.isEmpty()) {
+                rows = BackendBridge.loadUpcomingAppointments(SAMPLE_REFERENCE_DATE, 30);
+            }
+            setTableRows((DefaultTableModel) appointmentsTable.getModel(), rows);
+        } catch (SQLException e) {
+            reportError("Unable to load appointments", e);
+        }
+    }
+
+    private void refreshEmployeesTable() {
+        try {
+            List<Object[]> rows = BackendBridge.loadEmployees();
+            setTableRows((DefaultTableModel) employeesTable.getModel(), rows);
+        } catch (SQLException e) {
+            reportError("Unable to load employees", e);
+        }
+    }
+
+    private void refreshServicesTable() {
+        try {
+            List<Object[]> rows = BackendBridge.loadServices();
+            setTableRows((DefaultTableModel) serviceTable.getModel(), rows);
+        } catch (SQLException e) {
+            reportError("Unable to load services", e);
+        }
+    }
+
+    private void refreshEngagementsTable() {
+        try {
+            List<Object[]> rows = BackendBridge.loadEngagements();
+            setTableRows((DefaultTableModel) engagementsTable.getModel(), rows);
+        } catch (SQLException e) {
+            reportError("Unable to load engagements", e);
+        }
+    }
+
+    private void refreshInvoicesTable() {
+        try {
+            List<Object[]> rows = BackendBridge.loadInvoices();
+            setTableRows((DefaultTableModel) invoicesTable.getModel(), rows);
+        } catch (SQLException e) {
+            reportError("Unable to load invoices", e);
+        }
+    }
+
+    private void refreshPaymentsTable() {
+        try {
+            List<Object[]> rows = BackendBridge.loadPayments();
+            setTableRows((DefaultTableModel) paymentsTable.getModel(), rows);
+        } catch (SQLException e) {
+            reportError("Unable to load payments", e);
+        }
+    }
+
+    private void refreshDocumentsTable() {
+        try {
+            List<Object[]> rows = BackendBridge.loadDocuments();
+            setTableRows((DefaultTableModel) documentsTable.getModel(), rows);
+        } catch (SQLException e) {
+            reportError("Unable to load documents", e);
+        }
+    }
+
+    private void setTableRows(DefaultTableModel model, List<Object[]> rows) {
+        model.setRowCount(0);
+        for (Object[] row : rows) {
+            model.addRow(row);
+        }
+    }
+
+    private Integer parseOptionalInteger(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return Integer.valueOf(value.trim());
+    }
+
+    private int parseRequiredInteger(String value, String fieldLabel) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldLabel + " is required.");
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid " + fieldLabel + ": " + value, e);
+        }
+    }
+
+    private LocalDate parseIsoDate(String value, String fieldLabel) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldLabel + " is required.");
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid " + fieldLabel + ": " + value, e);
+        }
+    }
+
+    private LocalTime parseIsoTime(String value, String fieldLabel) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldLabel + " is required.");
+        }
+        try {
+            return LocalTime.parse(value.trim());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid " + fieldLabel + ": " + value, e);
+        }
+    }
+
+    private String requireText(String value, String fieldLabel) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldLabel + " is required.");
+        }
+        return value.trim();
+    }
+
+    private BigDecimal parseCurrency(String value, String fieldLabel) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldLabel + " is required.");
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid " + fieldLabel + ": " + value, e);
+        }
+    }
+
+    private int parseOptionIdFromLabel(String label, String fieldLabel) {
+        if (label == null || label.isBlank()) {
+            throw new IllegalArgumentException(fieldLabel + " is required.");
+        }
+        String idPart = label;
+        int dashIndex = label.indexOf('-');
+        if (dashIndex >= 0) {
+            idPart = label.substring(0, dashIndex);
+        }
+        return parseRequiredInteger(idPart.trim(), fieldLabel + " ID");
+    }
+
+    private void reportError(String message, Exception e) {
+        logger.log(Level.SEVERE, message, e);
+        JOptionPane.showMessageDialog(this,
+                message + "\n" + e.getMessage(),
+                "Database Error",
+                JOptionPane.ERROR_MESSAGE);
+    }
+
     public static void main(String args[]) {
         
         java.awt.EventQueue.invokeLater(() -> new Home().setVisible(true));
     }
     
     private void showPanel(javax.swing.JPanel panel) {
+    if (panel == clients_panel) {
+        refreshClientsTable();
+    } else if (panel == appointment_panel) {
+        refreshAppointmentsTable();
+    } else if (panel == employee_panel) {
+        refreshEmployeesTable();
+    } else if (panel == services_panel) {
+        refreshServicesTable();
+    } else if (panel == engagement_panel) {
+        refreshEngagementsTable();
+    } else if (panel == invoice_panel) {
+        refreshInvoicesTable();
+    } else if (panel == payments_panel) {
+        refreshPaymentsTable();
+    } else if (panel == document_panel) {
+        refreshDocumentsTable();
+    }
     dashboard_right_panel.removeAll();
     dashboard_right_panel.add(panel, 
         new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, -1, -1));
@@ -1704,5 +2076,3 @@ for (int i = 0; i < updated.length; i++) {
     private javax.swing.JPanel services_panel;
     // End of variables declaration//GEN-END:variables
 }
-
-

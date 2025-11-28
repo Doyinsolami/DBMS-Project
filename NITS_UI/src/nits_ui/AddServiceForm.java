@@ -3,12 +3,18 @@ package nits_ui;
 
 public class AddServiceForm extends javax.swing.JDialog {
 
+    private boolean saved = false;
+
     /**
      * Creates new form AddClientForm
      */
     public AddServiceForm(java.awt.Frame parent, boolean modal) {
     super(parent, modal);
     initComponents();
+}
+
+public boolean isSaved() {
+    return saved;
 }
 
 public String[] getServiceData() {
@@ -88,7 +94,7 @@ public String[] getServiceData() {
     }//GEN-LAST:event_closeDialog
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
+        saved = true;
         this.dispose();
 
     }//GEN-LAST:event_jButton1ActionPerformed

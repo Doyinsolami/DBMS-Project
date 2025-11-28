@@ -1,42 +1,62 @@
 package nits_ui;
 
+import java.sql.SQLException;
+import java.util.List;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JOptionPane;
+import nits_ui.data.BackendBridge;
+import nits_ui.data.RecordOption;
+
 public class CreateInvoiceForm extends javax.swing.JDialog {
 
-    private Home homeRef;
+    private boolean saved = false;
 
     public CreateInvoiceForm(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
-        this.homeRef = (Home) parent;
-
         initComponents();
-        loadEngagements();
+        populateEngagements();
     }
 
 
-public String[] getInvoiceData() {
-    return new String[] {
-    txtInvoiceID.getText(),
-    txtEngagementID.getSelectedItem().toString(),
-    txtInvoiceDate.getText(),
-    txtDueDate.getText(),
-    txtStatus.getSelectedItem().toString(),
-    txtFinalFee.getText()
-};
-
+public boolean isSaved() {
+    return saved;
 }
 
+public String[] getInvoiceData() {
+    RecordOption engagement = (RecordOption) txtEngagementID.getSelectedItem();
+    return new String[] {
+        txtInvoiceID.getText(),
+        optionIdToString(engagement),
+        txtInvoiceDate.getText(),
+        txtDueDate.getText(),
+        txtStatus.getSelectedItem().toString(),
+        txtFinalFee.getText()
+    };
+}
 
-private void loadEngagements() {
-    txtEngagementID.removeAllItems();
-
-    javax.swing.table.DefaultTableModel model =
-        (javax.swing.table.DefaultTableModel) homeRef.getEngagementsTable().getModel();
-
-    for (int i = 0; i < model.getRowCount(); i++) {
-        Object id = model.getValueAt(i, 0);
-        if (id != null) {
-            txtEngagementID.addItem(id.toString());
+private void populateEngagements() {
+    try {
+        List<RecordOption> options = BackendBridge.fetchEngagementOptions();
+        DefaultComboBoxModel<RecordOption> model = new DefaultComboBoxModel<>();
+        for (RecordOption option : options) {
+            model.addElement(option);
         }
+        txtEngagementID.setModel(model);
+        if (model.getSize() == 0) {
+            JOptionPane.showMessageDialog(this,
+                    "Create at least one engagement before creating invoices.",
+                    "Missing Engagements",
+                    JOptionPane.WARNING_MESSAGE);
+            saved = false;
+            dispose();
+        }
+    } catch (SQLException e) {
+        JOptionPane.showMessageDialog(this,
+                "Unable to load engagements.\n" + e.getMessage(),
+                "Database Error",
+                JOptionPane.ERROR_MESSAGE);
+        saved = false;
+        dispose();
     }
 }
 
@@ -122,7 +142,7 @@ private void loadEngagements() {
     }//GEN-LAST:event_closeDialog
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
+        saved = true;
         this.dispose();
 
     }//GEN-LAST:event_jButton1ActionPerformed
@@ -131,6 +151,10 @@ private void loadEngagements() {
         // TODO add your handling code here:
         this.dispose();
     }//GEN-LAST:event_jButton2ActionPerformed
+
+    private String optionIdToString(RecordOption option) {
+        return option == null ? "" : Integer.toString(option.getId());
+    }
 
     /**
      * @param args the command line arguments
@@ -161,7 +185,7 @@ private void loadEngagements() {
     private javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
     private javax.swing.JTextField txtDueDate;
-    private javax.swing.JComboBox<String> txtEngagementID;
+    private javax.swing.JComboBox<RecordOption> txtEngagementID;
     private javax.swing.JTextField txtFinalFee;
     private javax.swing.JTextField txtInvoiceDate;
     private javax.swing.JTextField txtInvoiceID;
